@@ -1,0 +1,55 @@
+name: Linux RDP (Ubuntu XFCE)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  linux-rdp:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 360
+
+    steps:
+    - name: Update system
+      run: |
+        sudo apt update && sudo apt upgrade -y
+
+    - name: Install Desktop + RDP
+      run: |
+        sudo apt install -y xfce4 xfce4-goodies xrdp dbus-x11
+        sudo systemctl enable xrdp
+        sudo adduser xrdp ssl-cert
+
+    - name: Create RDP user
+      run: |
+        sudo useradd -m rdpuser
+        echo "rdpuser:rdp123" | sudo chpasswd
+        sudo adduser rdpuser sudo
+        echo "xfce4-session" > /home/rdpuser/.xsession
+        sudo chown rdpuser:rdpuser /home/rdpuser/.xsession
+
+    - name: Install Tailscale
+      run: |
+        curl -fsSL https://tailscale.com/install.sh | sh
+
+    - name: Start Tailscale
+      env:
+        TAILSCALE_AUTHKEY: ${{ secrets.TAILSCALE_AUTHKEY }}
+      run: |
+        sudo tailscale up --authkey=${TAILSCALE_AUTHKEY} --hostname=linux-rdp
+
+    - name: Show connection info
+      run: |
+        echo "=============================="
+        echo "USERNAME: rdpuser"
+        echo "PASSWORD: rdp123"
+        echo "=============================="
+        echo "TAILSCALE IP:"
+        tailscale ip -4
+        echo "=============================="
+        echo "RDP PORT: 3389"
+        echo "=============================="
+
+    - name: Keep VM Alive (6 hours)
+      run: |
+        echo "VM running..."
+        sleep 21600
