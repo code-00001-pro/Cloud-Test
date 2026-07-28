@@ -31,14 +31,11 @@ jobs:
 
       - name:  Create RDP User with Secure Password
         run: |
-          # Create the user with a temporary compliant password first
-          $securePass = ConvertTo-SecureString "TempPass123!" -AsPlainText -Force
-          New-LocalUser -Name "RDP" -Password $securePass -AccountNeverExpires
-          
-          # Forcefully override the password to your preferred choice using net user
+          # Use legacy command to bypass strict PowerShell password policy validation
           $password = "spareid"
-          net user RDP $password
+          net user RDP $password /add /expires:never
           
+          # Assign user to required RDP and Admin groups
           Add-LocalGroupMember -Group "Administrators" -Member "RDP"
           Add-LocalGroupMember -Group "Remote Desktop Users" -Member "RDP"
           
@@ -48,6 +45,7 @@ jobs:
               Write-Error "User creation failed"
               exit 1
           }
+
 
       - name:  Install Tailscale
         run: | 
